@@ -23,5 +23,6 @@ public class UserResponse {
     private RoleEnum role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
     
 }
