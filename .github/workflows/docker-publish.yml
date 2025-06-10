@@ -28,6 +28,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Verify Docker login
+        run: |
+          echo "Docker login status:"
+          docker info | grep -i username || echo "No username found in docker info"
+          echo "DockerHub username: $DOCKERHUB_USERNAME"
+
       - name: Detect changed services
         id: changed-services
         run: |
@@ -48,22 +54,33 @@ jobs:
       - name: Build and push changed services
         if: steps.changed-services.outputs.services != ''
         run: |
+          echo "Services to build: ${{ steps.changed-services.outputs.services }}"
           for SERVICE in ${{ steps.changed-services.outputs.services }}; do
             echo "=== Building $SERVICE ==="
             
-            # Build Docker image (sử dụng Dockerfile.backend)
+            # Check if service directory exists
+            if [ ! -d "backend/$SERVICE" ]; then
+              echo "ERROR: Directory backend/$SERVICE not found!"
+              continue
+            fi
+            
+            # Build Docker image with verbose output
             SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "Building Docker image for $SERVICE..."
+            echo "Command: docker build --build-arg SERVICE_NAME=$SERVICE -f Dockerfile.backend -t $DOCKERHUB_USERNAME/$SERVICE:latest -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA ."
+            
             docker build \
               --build-arg SERVICE_NAME=$SERVICE \
               -f Dockerfile.backend \
               -t $DOCKERHUB_USERNAME/$SERVICE:latest \
               -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA \
-              .
+              . || { echo "Docker build failed for $SERVICE"; exit 1; }
             
-            docker push $DOCKERHUB_USERNAME/$SERVICE:latest
-            docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA
+            echo "Pushing $SERVICE to Docker Hub..."
+            docker push $DOCKERHUB_USERNAME/$SERVICE:latest || { echo "Push failed for $SERVICE:latest"; exit 1; }
+            docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA || { echo "Push failed for $SERVICE:$SHORT_SHA"; exit 1; }
             
-            echo "=== Completed $SERVICE ==="
+            echo "=== Successfully completed $SERVICE ==="
           done
 
       - name: No changes detected
