@@ -1,0 +1,10 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: rate-limit
+  namespace: default
+plugin: rate-limiting
+config:
+  second: 5     # 5 requests/second
+  minute: 100   # 100 requests/minute
+  policy: local
