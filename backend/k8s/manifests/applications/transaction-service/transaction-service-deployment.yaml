@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+      - name: transaction-service
+        image: 20224886/transaction-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: SPRING_PROFILES_ACTIVE
+        - name: CONFIG_SERVER_URL
+          value: "http://config-server-service:8888"
+        - name: CONFIG_SERVER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: transaction-secret
+              key: CONFIG_SERVER_NAME
+        - name: CONFIG_SERVER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: transaction-secret
+              key: CONFIG_SERVER_PASSWORD
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: DB_NAME
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: transaction-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: transaction-secret
+              key: POSTGRES_PASSWORD
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: JWT_SECRET
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: JWT_SECRET
+        - name: JWT_EXPIRATION_MS
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: JWT_EXPIRATION_MS
+        - name: JWT_REFRESH_EXPIRATION_MS
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: JWT_REFRESH_EXPIRATION_MS
+        - name: SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: SERVER_PORT
+        - name: USER_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: transaction-configmap
+              key: USER_SERVICE_URL

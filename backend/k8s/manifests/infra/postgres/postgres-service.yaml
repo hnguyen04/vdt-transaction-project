@@ -1,0 +1,32 @@
+# postgres-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: default
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  type: ClusterIP
+---
+# NodePort service for external access (equivalent to port 5433:5432 in docker-compose)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-nodeport
+  namespace: default
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+    nodePort: 30543  # External port (equivalent to 5433 in docker-compose)
+    protocol: TCP
+    name: postgres
+  type: NodePort

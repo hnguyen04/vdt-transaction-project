@@ -97,3 +97,7 @@ lcov-report/
 test-output/
 *.lcov
 .nyc_output/
+
+
+*-secret.yaml
+*-configmap.yaml
