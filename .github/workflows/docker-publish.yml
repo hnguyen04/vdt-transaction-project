@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 2
+          fetch-depth: 2  # Tối ưu cho việc detect changes
 
       - name: Set up JDK 21
         uses: actions/setup-java@v3
@@ -59,26 +59,49 @@ jobs:
         run: |
           set -e
           for SERVICE in ${{ steps.changed-services.outputs.services }}; do
-            echo "Building $SERVICE"
-            cd backend/$SERVICE
-            ./mvnw clean package -DskipTests
-            cd ../../
+            echo "=== Building $SERVICE ==="
             
-            JAR_FILE=$(ls backend/$SERVICE/target/*.jar | head -n 1)
+            # Step 1: Build JAR
+            cd backend/$SERVICE
+            echo "Granting execute permission to mvnw"
+            chmod +x mvnw  # Fix permission denied error
+            
+            echo "Building JAR..."
+            ./mvnw clean package -DskipTests
+            
+            # Step 2: Prepare Docker build
+            cd ../../
+            JAR_FILE=$(ls backend/$SERVICE/target/*.jar | grep -v 'original-' | head -n 1)
+            echo "Using JAR file: $JAR_FILE"
             cp "$JAR_FILE" "$SERVICE.jar"
 
+            # Step 3: Build and push Docker image
             SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "Building Docker image..."
             docker build \
               --build-arg JAR_FILE=$SERVICE.jar \
               -t $DOCKERHUB_USERNAME/$SERVICE:latest \
               -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA \
               -f backend/docker/Dockerfile .
 
+            echo "Pushing to Docker Hub..."
             docker push $DOCKERHUB_USERNAME/$SERVICE:latest
             docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA
-            rm "$SERVICE.jar"
+            
+            # Cleanup
+            rm -f "$SERVICE.jar"
+            echo "=== Completed $SERVICE ==="
+          done
+
+      - name: Verify pushed images
+        if: steps.changed-services.outputs.services != ''
+        run: |
+          for SERVICE in ${{ steps.changed-services.outputs.services }}; do
+            echo "Verify $SERVICE:"
+            docker pull $DOCKERHUB_USERNAME/$SERVICE:latest
+            docker images | grep $SERVICE
           done
 
       - name: No changes detected
         if: steps.changed-services.outputs.services == ''
-        run: echo "No service code changes detected, skipping build."
+        run: echo "✅ No service code changes detected. Skipping build."
