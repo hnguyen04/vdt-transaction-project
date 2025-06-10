@@ -1,0 +1,23 @@
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
+
+ARG SERVICE_NAME
+WORKDIR /app
+
+# Copy service code
+COPY backend/${SERVICE_NAME} .
+
+# Build JAR directly
+RUN mvn clean package -DskipTests
+
+# Runtime stage
+FROM amazoncorretto:21-alpine
+WORKDIR /app
+
+# Copy JAR file from build stage
+COPY --from=builder /app/target/*.jar app.jar
+
+# Expose port 8080
+EXPOSE 8080
+
+# Run application
+ENTRYPOINT ["java", "-jar", "app.jar"]

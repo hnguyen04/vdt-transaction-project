@@ -51,19 +51,11 @@ jobs:
           for SERVICE in ${{ steps.changed-services.outputs.services }}; do
             echo "=== Building $SERVICE ==="
             
-            # Build JAR
-            cd backend/$SERVICE
-            mvn clean package -DskipTests
-            cd ../../
-            
-            # Copy JAR file
-            JAR_FILE=$(find backend/$SERVICE/target -name "*.jar" ! -name "*-original.jar")
-            cp "$JAR_FILE" "$SERVICE.jar"
-            
-            # Build and push Docker image (Docker sẽ tự tìm Dockerfile)
+            # Build Docker image (sử dụng Dockerfile.backend)
             SHORT_SHA=$(git rev-parse --short HEAD)
             docker build \
-              --build-arg JAR_FILE=$SERVICE.jar \
+              --build-arg SERVICE_NAME=$SERVICE \
+              -f Dockerfile.backend \
               -t $DOCKERHUB_USERNAME/$SERVICE:latest \
               -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA \
               .
@@ -71,8 +63,6 @@ jobs:
             docker push $DOCKERHUB_USERNAME/$SERVICE:latest
             docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA
             
-            # Cleanup
-            rm -f "$SERVICE.jar"
             echo "=== Completed $SERVICE ==="
           done
 
