@@ -5,9 +5,7 @@ import com.example.auth_service.common.constants.RoleEnum;
 import com.example.auth_service.common.dto.response.ApiResponse;
 import com.example.auth_service.common.dto.response.BaseGetAllResponse;
 import com.example.auth_service.dto.auth.RegisterRequest;
-import com.example.auth_service.dto.user.UpdateUserRequest;
-import com.example.auth_service.dto.user.UserGetAllRequest;
-import com.example.auth_service.dto.user.UserResponse;
+import com.example.auth_service.dto.user.*;
 import com.example.auth_service.service.user.IUserService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -84,4 +82,33 @@ public class UserController {
                 .build();
     }
 
+    @PutMapping("/ChangePassword")
+    ApiResponse<String> changePassword(@RequestBody ChangePasswordRequest request) {
+        userService.changePassword(request);
+        return ApiResponse.<String>builder()
+                .result("Password changed successfully")
+                .build();
+    }
+
+    @PutMapping("/ResetPassword")
+    ApiResponse<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request);
+        return ApiResponse.<String>builder()
+                .result("Password reset successfully")
+                .build();
+    }
+
+    @GetMapping("/GetMyInfo")
+    ApiResponse<UserResponse> getMyInfo() {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.getMyInfo())
+                .build();
+    }
+
+    @GetMapping("/GetUserConfiguration")
+    ApiResponse<UserConfigurationResponse> getUserConfiguration() {
+        return ApiResponse.<UserConfigurationResponse>builder()
+                .result(userService.getUserConfiguration())
+                .build();
+    }
 }

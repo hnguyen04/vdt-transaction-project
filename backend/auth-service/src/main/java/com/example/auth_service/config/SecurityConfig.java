@@ -67,10 +67,9 @@ public class SecurityConfig {
         grantedAuthoritiesConverter.setAuthoritiesClaimName("authorities");
         grantedAuthoritiesConverter.setAuthorityPrefix("");
 
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-
-        return jwtAuthenticationConverter;
+        return new JwtAuthenticationConverter() {{
+            setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        }};
     }
 
 }

@@ -4,20 +4,19 @@ import com.example.auth_service.common.constants.RoleEnum;
 import com.example.auth_service.common.dto.response.BaseGetAllResponse;
 import com.example.auth_service.common.exception.AppException;
 import com.example.auth_service.common.exception.ErrorCode;
+import com.example.auth_service.config.AppContext;
 import com.example.auth_service.dto.auth.RegisterRequest;
-import com.example.auth_service.dto.user.UpdateUserRequest;
-import com.example.auth_service.dto.user.UserGetAllRequest;
-import com.example.auth_service.dto.user.UserResponse;
+import com.example.auth_service.dto.user.*;
 import com.example.auth_service.entity.User;
 import com.example.auth_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -125,8 +124,77 @@ public class UserService implements IUserService {
                 .build();
     }
 
-    private String normalize(String input) {
-        return (input == null || input.isBlank()) ? null : input.trim();
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        String userIdStr = AppContext.getUserId();
+
+        UUID userId = UUID.fromString(userIdStr);  // ✅ Chuyển từ String sang UUID
+
+        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Current password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        String userIdStr = AppContext.getUserId();
+        UUID userId = UUID.fromString(userIdStr);
+        User admin = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.getAdminPassword(), admin.getPassword())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Admin password is incorrect");
+        }
+
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found"));
+
+        userRepository.save(user);
+    }
+
+    @Override
+    public UserResponse getMyInfo () {
+        String userIdStr = AppContext.getUserId();
+        UUID userId = UUID.fromString(userIdStr);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found"));
+        return toUserResponse(user);
+    }
+
+    @Override
+    public UserConfigurationResponse getUserConfiguration() {
+        String userIdStr = AppContext.getUserId();
+        UUID userId = UUID.fromString(userIdStr);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found"));
+
+        RoleEnum currentRole = user.getRole(); // hoặc lấy từ user.getRoleId() nếu không có enum trực tiếp
+
+        Map<String, Boolean> allPermissions = new HashMap<>();
+        Map<String, Boolean> grantedPermissions = new HashMap<>();
+
+        for (RoleEnum role : RoleEnum.values()) {
+            String key = "Role." + role.name();
+            boolean isGranted = role == currentRole;
+            allPermissions.put(key, isGranted);
+            if (isGranted) {
+                grantedPermissions.put(key, true);
+            }
+        }
+
+        return UserConfigurationResponse.builder()
+                .roleName(currentRole)
+                .auth(UserConfigurationResponse.AuthPermissions.builder()
+                        .allPermissions(allPermissions)
+                        .grantedPermissions(grantedPermissions)
+                        .build())
+                .build();
     }
 
     public UserResponse toUserResponse(User user) {
@@ -141,6 +209,10 @@ public class UserService implements IUserService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+
+    private String normalize(String input) {
+        return (input == null || input.isBlank()) ? null : input.trim();
     }
 
     private String generateUserCode() {

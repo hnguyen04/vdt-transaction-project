@@ -8,11 +8,15 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Filter để kiểm tra JWT trong mỗi request và gán thông tin người dùng vào SecurityContext
@@ -32,15 +36,27 @@ public class JwtBlackListFilter extends OncePerRequestFilter {
 
         String token = parseJwt(request);
 
-        if (token != null && jwtUtil.validateToken(token)) {
-            if (redisService.hasKey(token)) {
-                // Nếu token bị blacklist, trả lỗi 401 và dừng filter chain
-                throw new AppException(ErrorCode.UNAUTHORIZED, "Token has been blacklisted");
-            }
-        }
+        try {
+            if (token != null && jwtUtil.validateToken(token)) {
+                if (redisService.hasKey(token)) {
+                    throw new AppException(ErrorCode.UNAUTHORIZED, "Token has been blacklisted");
+                }
 
-        // Tiếp tục chuỗi filter bình thường nếu token không bị blacklist hoặc không có token
-        filterChain.doFilter(request, response);
+                // ✅ Lấy userId và set vào AppContext
+                String userId = jwtUtil.getUserIdFromToken(token);
+                AppContext.setUserId(userId);
+
+                // ✅ Set authentication nếu cần
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userId, null, List.of());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+
+            filterChain.doFilter(request, response);
+        } finally {
+            AppContext.clear(); // rất quan trọng để tránh memory leak giữa các request thread
+        }
     }
 
     /**

@@ -3,9 +3,7 @@ package com.example.auth_service.service.user;
 import com.example.auth_service.common.constants.CacheKeys;
 import com.example.auth_service.common.dto.response.BaseGetAllResponse;
 import com.example.auth_service.dto.auth.RegisterRequest;
-import com.example.auth_service.dto.user.UpdateUserRequest;
-import com.example.auth_service.dto.user.UserGetAllRequest;
-import com.example.auth_service.dto.user.UserResponse;
+import com.example.auth_service.dto.user.*;
 import com.example.auth_service.entity.User;
 import com.example.auth_service.service.RedisService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +30,7 @@ public class UserServiceCacheDecorator implements IUserService {
     @Override
     public UserResponse updateUser(UpdateUserRequest request) {
         UserResponse response = userService.updateUser(request);
+        redisService.delete(USER_CACHE_PREFIX + request.getId());
         redisService.set(USER_CACHE_PREFIX + response.getId(), response, 10, TimeUnit.MINUTES);
         return response;
     }
@@ -65,6 +64,31 @@ public class UserServiceCacheDecorator implements IUserService {
         return userService.getUserEntityById(id);
     }
 
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        userService.changePassword(request);
+        // Không cần cache cho thay đổi mật khẩu
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        userService.resetPassword(request);
+        // Không cần cache cho reset mật khẩu
+    }
+
+    @Override
+    public UserResponse getMyInfo() {
+        UserResponse userResponse = userService.getMyInfo();
+        String key = USER_CACHE_PREFIX + userResponse.getId();
+        redisService.set(key, userResponse, 10, TimeUnit.MINUTES);
+        return userResponse;
+    }
+
+    @Override
+    public UserConfigurationResponse getUserConfiguration() {
+        return userService.getUserConfiguration();
+    }
+
     public UserResponse toUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
@@ -78,4 +102,5 @@ public class UserServiceCacheDecorator implements IUserService {
                 .updatedAt(user.getUpdatedAt())
                 .build();
     }
+
 }
