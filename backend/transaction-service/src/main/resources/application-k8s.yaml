@@ -65,6 +65,10 @@ resilience4j:
         minimumNumberOfCalls: 5
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
+springdoc:
+  swagger-ui:
+    use-root-path: true
+
 user:
   service:
     url: ${USER_SERVICE_URL}

@@ -22,9 +22,9 @@ public class OpenAPIConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Auth Service API")
+                        .title("Transaction Service API")
                         .version("1.0.0")
-                        .description("API documentation for Auth Service"))
+                        .description("API documentation for Transaction Service"))
                 .components(new io.swagger.v3.oas.models.Components()
                         .addSecuritySchemes("BearerAuth",
                                 new io.swagger.v3.oas.models.security.SecurityScheme()

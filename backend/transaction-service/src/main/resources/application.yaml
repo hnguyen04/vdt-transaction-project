@@ -57,6 +57,10 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS}
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS}
 
+springdoc:
+  swagger-ui:
+    use-root-path: true
+
 resilience4j:
   circuitbreaker:
     instances:

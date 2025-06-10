@@ -67,6 +67,9 @@ resilience4j:
         minimumNumberOfCalls: 5
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
+springdoc:
+  swagger-ui:
+    use-root-path: true
 # Enable debug logs for resilience if needed
 logging:
   level:

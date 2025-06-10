@@ -69,4 +69,8 @@ user:
   service:
     url: ${USER_SERVICE_URL}
 
+springdoc:
+  swagger-ui:
+    use-root-path: true
+
 debug: true
