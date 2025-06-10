@@ -60,13 +60,13 @@ jobs:
             JAR_FILE=$(find backend/$SERVICE/target -name "*.jar" ! -name "*-original.jar")
             cp "$JAR_FILE" "$SERVICE.jar"
             
-            # Build and push Docker image
+            # Build and push Docker image (Docker sẽ tự tìm Dockerfile)
             SHORT_SHA=$(git rev-parse --short HEAD)
             docker build \
               --build-arg JAR_FILE=$SERVICE.jar \
               -t $DOCKERHUB_USERNAME/$SERVICE:latest \
               -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA \
-              -f backend/docker/Dockerfile .
+              .
             
             docker push $DOCKERHUB_USERNAME/$SERVICE:latest
             docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA
