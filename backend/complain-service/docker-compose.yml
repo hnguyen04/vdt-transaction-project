@@ -1,0 +1,16 @@
+services:
+  complain-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: complain-service
+    ports:
+      - "8083:8083"
+    env_file:
+      - .env
+    networks:
+      - transaction-microservice-net
+
+networks:
+  transaction-microservice-net:
+    external: true

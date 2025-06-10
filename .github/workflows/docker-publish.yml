@@ -1,0 +1,84 @@
+name: Build Changed Services and Publish Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  SERVICES: config-server auth-service transaction-service complain-service
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Detect changed services
+        id: changed-services
+        continue-on-error: true
+        run: |
+          set -e
+          echo "Checking changed files..."
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "")
+          echo "Changed files: $CHANGED_FILES"
+
+          CHANGED_SERVICES=""
+          for SERVICE in $SERVICES; do
+            for FILE in $CHANGED_FILES; do
+              if [[ "$FILE" == backend/$SERVICE/* ]]; then
+                CHANGED_SERVICES="$CHANGED_SERVICES $SERVICE"
+                break
+              fi
+            done
+          done
+
+          CHANGED_SERVICES=$(echo $CHANGED_SERVICES | tr ' ' '\n' | sort -u | xargs)
+          echo "Changed services: $CHANGED_SERVICES"
+          echo "services=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
+
+      - name: Build and push changed services
+        if: steps.changed-services.outputs.services != ''
+        run: |
+          set -e
+          for SERVICE in ${{ steps.changed-services.outputs.services }}; do
+            echo "Building $SERVICE"
+            cd backend/$SERVICE
+            ./mvnw clean package -DskipTests
+            cd ../../
+            
+            JAR_FILE=$(ls backend/$SERVICE/target/*.jar | head -n 1)
+            cp "$JAR_FILE" "$SERVICE.jar"
+
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            docker build \
+              --build-arg JAR_FILE=$SERVICE.jar \
+              -t $DOCKERHUB_USERNAME/$SERVICE:latest \
+              -t $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA \
+              -f backend/docker/Dockerfile .
+
+            docker push $DOCKERHUB_USERNAME/$SERVICE:latest
+            docker push $DOCKERHUB_USERNAME/$SERVICE:$SHORT_SHA
+            rm "$SERVICE.jar"
+          done
+
+      - name: No changes detected
+        if: steps.changed-services.outputs.services == ''
+        run: echo "No service code changes detected, skipping build."

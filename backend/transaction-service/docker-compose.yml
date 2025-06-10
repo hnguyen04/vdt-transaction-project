@@ -1,0 +1,16 @@
+services:
+  transaction-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: transaction-service
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    networks:
+      - transaction-microservice-net
+
+networks:
+  transaction-microservice-net:
+    external: true

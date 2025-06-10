@@ -1,0 +1,99 @@
+# ========================
+# Java / Spring Boot
+# ========================
+/target/
+/build/
+/out/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.iml
+*.ipr
+*.iws
+*.hprof
+.DS_Store
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.project
+.classpath
+.c9/
+.settings/
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+gradle-app.setting
+
+# Maven
+.mvn/
+!**/src/main/**
+!**/src/test/**
+
+# Logs
+*.log
+logs/
+*.pid
+
+# ========================
+# Node / React / TypeScript
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.cache/
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# React Native/Web
+.expo/
+.expo-shared/
+
+# ========================
+# Kubernetes & Docker
+# ========================
+*.env
+.env.*
+.dockerignore
+docker-compose.override.yml
+*.local.yml
+*.minikube
+*.kube/
+
+# ========================
+# OS / Misc
+# ========================
+*.swp
+*~
+*.tmp
+Thumbs.db
+ehthumbs.db
+.DS_Store
+*.bak
+
+# vscode
+.vscode/
+
+# ========================
+# Coverage / Test Reports
+# ========================
+coverage/
+lcov-report/
+test-output/
+*.lcov
+.nyc_output/
