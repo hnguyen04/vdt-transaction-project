@@ -53,7 +53,7 @@ public class ComplainService {
         UserResponse resolverData = fetchUserInfo(entity.getResolverId());
 
         return mapToResponse(entity, userData, resolverData, transactionData);
-    }
+    } 
 
     public ComplainResponse getById(UUID id) {
         var entity = repository.findById(id)
