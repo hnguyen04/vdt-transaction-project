@@ -35,7 +35,7 @@ public class ComplainService {
     private final TransactionClient transactionClient;
     private final RedisService redisService;
 
-
+    @Transactional
     public ComplainResponse create(ComplainCreateRequest request) {
         var entity = com.example.complain_service.entity.Complain.builder()
                 .transactionId(request.getUserId())
@@ -67,6 +67,7 @@ public class ComplainService {
         return mapToResponse(entity, userData, resolverData, transactionData);
     }
 
+    @Transactional
     public ComplainResponse update(ComplainUpdateRequest request) {
         var entity = repository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + request.getId()));
@@ -89,6 +90,7 @@ public class ComplainService {
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + id));
     }
 
+    @Transactional
     public ComplainResponse claim(ComplainAssignRequest request) {
         var entity = repository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + request.getId()));
@@ -104,6 +106,7 @@ public class ComplainService {
         return mapToResponse(entity, user, resolver, transactionData);
     }
 
+    @Transactional
     public ComplainResponse assign(ComplainAssignRequest request) {
         var entity = repository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + request.getId()));
@@ -119,6 +122,7 @@ public class ComplainService {
         return mapToResponse(entity, user, resolver, transactionData);
     }
 
+    @Transactional
     public ComplainResponse resolve(ComplainAssignRequest request) {
         var entity = repository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + request.getId()));
@@ -136,6 +140,7 @@ public class ComplainService {
         return mapToResponse(entity, user, resolver, transactionData);
     }
 
+    @Transactional
     public ComplainResponse note(ComplainNoteRequest request) {
         var entity = repository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Complain not found with id: " + request.getId()));

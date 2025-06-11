@@ -39,6 +39,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 OR u.code LIKE %:keyword%
                 )
             )
+        ORDER BY u.updatedAt DESC
+
         """
     )
     List<User> findAllByFilters(@Param("userName") String userName,

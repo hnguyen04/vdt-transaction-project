@@ -2,7 +2,9 @@ package com.example.auth_service.service;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -97,6 +99,20 @@ public class RedisService {
 
     public void fallbackSetTTL(String key, long timeout, TimeUnit unit, Throwable t) {
         System.out.println("[RedisService fallbackSetTTL] Error setting TTL for key: " + key + ", error: " + t.getMessage());
+    }
+
+    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "fallbackRemoveKeysByPrefix")
+    public void removeKeysByPrefix(String prefix) {
+        ScanOptions options = ScanOptions.scanOptions().match(prefix + "*").count(1000).build();
+        try (Cursor<byte[]> cursor = redisTemplate.getConnectionFactory().getConnection().scan(options)) {
+            while (cursor.hasNext()) {
+                redisTemplate.delete(new String(cursor.next()));
+            }
+        }
+    }
+
+    public void fallbackRemoveKeysByPrefix(String prefix, Throwable t) {
+        System.out.println("[RedisService fallbackRemoveKeysByPrefix] Error removing keys with prefix: " + prefix + ", error: " + t.getMessage());
     }
 }
 

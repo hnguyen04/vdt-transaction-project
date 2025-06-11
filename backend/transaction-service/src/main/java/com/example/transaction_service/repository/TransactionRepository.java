@@ -42,6 +42,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             t.bankCode LIKE %:keyword%
         )
     )
+    ORDER BY t.updatedAt DESC
+    
 """)
     List<Transaction> findAllWithFilters(
             @Param("userId") UUID userId,

@@ -53,6 +53,7 @@ public class UserService implements IUserService {
         return toUserResponse(user);
     }
 
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Override
     public UserResponse updateUser(UpdateUserRequest request) {
@@ -75,6 +76,7 @@ public class UserService implements IUserService {
         return toUserResponse(user);
     }
 
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Override
     public void deleteUser(UUID id) {
@@ -124,6 +126,7 @@ public class UserService implements IUserService {
                 .build();
     }
 
+    @Transactional
     @Override
     public void changePassword(ChangePasswordRequest request) {
         String userIdStr = AppContext.getUserId();
@@ -139,6 +142,8 @@ public class UserService implements IUserService {
         userRepository.save(user);
     }
 
+
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Override
     public void resetPassword(ResetPasswordRequest request) {

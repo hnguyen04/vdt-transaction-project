@@ -2,6 +2,7 @@ package com.example.transaction_service.service.transaction;
 
 import com.example.transaction_service.client.UserClient;
 import com.example.transaction_service.common.constants.CacheKeys;
+import com.example.transaction_service.common.constants.RoleEnum;
 import com.example.transaction_service.common.constants.TransactionStatusEnum;
 import com.example.transaction_service.common.constants.TransactionTypeEnum;
 import com.example.transaction_service.common.dto.response.ApiResponse;
@@ -16,13 +17,20 @@ import com.example.transaction_service.dto.user.UserResponse;
 import com.example.transaction_service.entity.Transaction;
 import com.example.transaction_service.repository.TransactionRepository;
 import com.example.transaction_service.service.RedisService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -31,6 +39,8 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final UserClient userClient;
     private final RedisService redisService;
+
+    private static final long CACHE_DURATION_MINUTES = 5;
 
     public TransactionService(TransactionRepository transactionRepository, UserClient userClient, RedisService redisService) {
         this.transactionRepository = transactionRepository;
@@ -43,118 +53,52 @@ public class TransactionService {
         int maxResultCount = Optional.ofNullable(request.getMaxResultCount()).orElse(10);
 
         String keyword = normalize(request.getKeyword());
-        String userName = normalize(request.getUserName());
-        String phoneNumber = normalize(request.getPhoneNumber());
-        String cmnd = normalize(request.getCmnd());
-        String userCode = normalize(request.getUserCode());
         String code = normalize(request.getCode());
         String bankCode = normalize(request.getBankCode());
         TransactionStatusEnum status = request.getStatus();
         TransactionTypeEnum type = request.getType();
         String sourceAccount = normalize(request.getSourceAccount());
         String destinationAccount = normalize(request.getDestinationAccount());
+        UUID userId = request.getUserId() != null ? request.getUserId() : null;
 
-        boolean hasUserFilter = userName != null || phoneNumber != null || cmnd != null || userCode != null;
+        resolveUserIdFromUserFields(request);
 
-        List<TransactionResponse> finalResults = new ArrayList<>();
+        String cacheKey = buildCacheKey(request);
+        boolean shouldUseCache = request.getSkipCount() == 0 && request.getMaxResultCount() <= 100;
 
-        if (keyword != null || hasUserFilter) {
-            ApiResponse<BaseGetAllResponse<UserResponse>> response = userClient.getAllUsers(
-                    0, Integer.MAX_VALUE,
-                    keyword, null, userName, null, phoneNumber, cmnd, userCode
-            );
-
-            List<UserResponse> users = Collections.emptyList();
-            if (response != null && response.isSuccess() && response.getResult() != null) {
-                users = response.getResult().getData();
+        if (shouldUseCache) {
+            List<TransactionResponse> cachedList = redisService.getList(cacheKey, TransactionResponse.class);
+            if (cachedList != null && !cachedList.isEmpty()) {
+                return BaseGetAllResponse.<TransactionResponse>builder()
+                        .data(paginate(cachedList, skipCount, maxResultCount))
+                        .totalRecords(cachedList.size())
+                        .build();
             }
-
-            if (users.isEmpty()) return BaseGetAllResponse.<TransactionResponse>builder()
-                    .data(Collections.emptyList())
-                    .totalRecords(0)
-                    .build();
-
-            if (users.size() == 1) {
-                redisService.set(CacheKeys.USER_PREFIX + users.getFirst().getId(), users.getFirst(), 10, TimeUnit.MINUTES);
-            }
-
-            for (UserResponse user : users) {
-                List<Transaction> transactions;
-
-                if (keyword == null) {
-                    String transactionCacheKey = CacheKeys.TRANSACTIONS_PREFIX + user.getId();
-                    transactions = redisService.getList(transactionCacheKey, Transaction.class);
-
-                    if (transactions == null) {
-                        transactions = transactionRepository.findAllWithFilters(
-                                user.getId(), code, status, type, sourceAccount, destinationAccount, bankCode, null
-                        );
-                        redisService.setList(transactionCacheKey, transactions, 5, TimeUnit.MINUTES);
-                    }
-                } else {
-                    // Bỏ qua cache nếu có keyword
-                    transactions = transactionRepository.findAllWithFilters(
-                            user.getId(), code, status, type, sourceAccount, destinationAccount, bankCode, null
-                    );
-
-                    List<Transaction> transactionsWithKeyword = transactionRepository.findAllWithFilters(
-                            null, code, status, type, sourceAccount, destinationAccount, bankCode, keyword
-                    );
-
-                    // Gộp và loại trùng
-                    Set<Transaction> mergedTransactionsSet = new LinkedHashSet<>();
-                    mergedTransactionsSet.addAll(transactions);
-                    mergedTransactionsSet.addAll(transactionsWithKeyword);
-
-                    transactions = new ArrayList<>(mergedTransactionsSet);
-                }
-
-                for (Transaction tx : transactions) {
-                    finalResults.add(TransactionMapper.toResponse(tx, user));
-                }
-            }
-
-        } else {
-            List<TransactionResponse> transactionResponses;
-            boolean useTypeCache = type != null && status == null;
-            boolean useStatusCache = status != null && type == null;
-
-            String cacheKey = null;
-            if (useTypeCache) {
-                cacheKey = CacheKeys.TRANSACTIONS_BY_TYPE_PREFIX + type;
-            } else if (useStatusCache) {
-                cacheKey = CacheKeys.TRANSACTIONS_BY_STATUS_PREFIX + status;
-            }
-
-            if (cacheKey != null) {
-                transactionResponses = redisService.getList(cacheKey, TransactionResponse.class);
-                if (transactionResponses == null) {
-                    List<Transaction> transactions = transactionRepository.findAllWithFilters(
-                            request.getUserId(), code, status, type, sourceAccount, destinationAccount, bankCode, null
-                    );
-                    transactionResponses = buildTransactionResponses(transactions);
-                    redisService.setList(cacheKey, transactionResponses, 5, TimeUnit.MINUTES);
-                }
-            } else {
-                List<Transaction> transactions = transactionRepository.findAllWithFilters(
-                        request.getUserId(), code, status, type, sourceAccount, destinationAccount, bankCode, null
-                );
-                transactionResponses = buildTransactionResponses(transactions);
-            }
-
-            finalResults.addAll(transactionResponses);
         }
 
-        int start = Math.min(skipCount, finalResults.size());
-        int end = Math.min(start + maxResultCount, finalResults.size());
+        List<Transaction> transactionList = transactionRepository.findAllWithFilters(
+                userId,
+                code,
+                status,
+                type,
+                sourceAccount,
+                destinationAccount,
+                bankCode,
+                keyword
+        );
 
-        List<TransactionResponse> paginatedResults = finalResults.subList(start, end);
+        List<TransactionResponse> responseList = transactionList.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        if (shouldUseCache) {
+            redisService.setList(cacheKey, responseList, CACHE_DURATION_MINUTES, TimeUnit.MINUTES);
+        }
 
         return BaseGetAllResponse.<TransactionResponse>builder()
-                .data(paginatedResults)
-                .totalRecords(finalResults.size())
+                .data(paginate(responseList, skipCount, maxResultCount))
+                .totalRecords(responseList.size())
                 .build();
-
     }
     public TransactionResponse create(TransactionCreateRequest request) {
         Transaction transaction = Transaction.builder()
@@ -171,15 +115,12 @@ public class TransactionService {
                 .build();
 
         transactionRepository.save(transaction);
-        UserResponse user = getUserFromCacheOrFeign(transaction.getUserId());
-
-        // XÓA CACHE
-        evictUserTransactionCache(transaction.getUserId(), transaction.getType(), transaction.getStatus());
-
-        return TransactionMapper.toResponse(transaction, user);
+        removeTransactionCache(transaction);
+        return mapToResponse(transaction);
 
     }
 
+    @Transactional
     public TransactionResponse update(TransactionUpdateRequest request) {
         Transaction transaction = transactionRepository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
@@ -187,21 +128,16 @@ public class TransactionService {
         if (request.getAmount() != null && request.getAmount().compareTo(BigDecimal.ZERO) > 0) {
             transaction.setAmount(request.getAmount());
         }
-
         if (request.getStatus() != null) {
             transaction.setStatus(request.getStatus());
         }
 
-        transaction.setUpdatedAt(LocalDateTime.now());
+        System.out.println("Transaction hash before update: " + transaction.hashCode());
         transactionRepository.save(transaction);
-        UserResponse user = getUserFromCacheOrFeign(transaction.getUserId());
+        System.out.println("Transaction hash after update: " + transaction.hashCode());
 
-
-        // XÓA CACHE
-        evictUserTransactionCache(transaction.getUserId(), transaction.getType(), transaction.getStatus());
-
-
-        return TransactionMapper.toResponse(transaction, user);
+        removeTransactionCache(transaction);
+        return mapToResponse(transaction);
     }
 
     public void delete(UUID id) {
@@ -209,21 +145,19 @@ public class TransactionService {
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
 
         transactionRepository.softDeleteById(id);
-
-
-        // XÓA CACHE
-        evictUserTransactionCache(transaction.getUserId(), transaction.getType(), transaction.getStatus());
+        removeTransactionCache(transaction);
     }
+
 
     public TransactionResponse getById(UUID id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
-        // Lấy thông tin người dùng từ cache hoặc gọi Feign client
-        UserResponse user = getUserFromCacheOrFeign(transaction.getUserId());
-        // Chuyển đổi Transaction sang TransactionRespons
-        return TransactionMapper.toResponse(transaction, user);
+        System.out.println("Transaction hash " + transaction.hashCode());
+
+        return mapToResponse(transaction);
     }
 
+    @Transactional
     public TransactionResponse approve(UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
@@ -235,12 +169,11 @@ public class TransactionService {
         transaction.setStatus(TransactionStatusEnum.SUCCESS);
         transaction.setUpdatedAt(LocalDateTime.now());
         transactionRepository.save(transaction);
-
-        evictUserTransactionCache(transaction.getUserId(), transaction.getType(), transaction.getStatus());
-
-        return toResponse(transaction);
+        removeTransactionCache(transaction);
+        return mapToResponse(transaction);
     }
 
+    @Transactional
     public TransactionResponse reject(UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
@@ -252,25 +185,8 @@ public class TransactionService {
         transaction.setStatus(TransactionStatusEnum.FAILED);
         transaction.setUpdatedAt(LocalDateTime.now());
         transactionRepository.save(transaction);
-
-        evictUserTransactionCache(transaction.getUserId(), transaction.getType(), transaction.getStatus());
-
-        return toResponse(transaction);
-    }
-
-    private void evictUserTransactionCache(UUID userId, TransactionTypeEnum type, TransactionStatusEnum status) {
-        redisService.delete(CacheKeys.TRANSACTIONS_PREFIX + userId);
-        if (type != null) {
-            redisService.delete(CacheKeys.TRANSACTIONS_BY_TYPE_PREFIX + type);
-        }
-        if (status != null) {
-            redisService.delete(CacheKeys.TRANSACTIONS_BY_STATUS_PREFIX + status);
-        }
-    }
-
-    private TransactionResponse toResponse(Transaction tx) {
-        UserResponse user = getUserFromCacheOrFeign(tx.getUserId());
-        return TransactionMapper.toResponse(tx, user);
+        removeTransactionCache(transaction);
+        return mapToResponse(transaction);
     }
 
     private UserResponse getUserFromCacheOrFeign(UUID userId) {
@@ -288,10 +204,104 @@ public class TransactionService {
         return user;
     }
 
+    private String buildCacheKey(TransactionGetAllRequest request) {
+        Map<String, Object> filteredParams = new LinkedHashMap<>();
+
+        if (request.getCode() != null) filteredParams.put("code", request.getCode());
+        if (request.getStatus() != null) filteredParams.put("status", request.getStatus());
+        if (request.getType() != null) filteredParams.put("type", request.getType());
+        if (request.getSourceAccount() != null) filteredParams.put("sourceAccount", request.getSourceAccount());
+        if (request.getDestinationAccount() != null) filteredParams.put("destinationAccount", request.getDestinationAccount());
+        if (request.getBankCode() != null) filteredParams.put("bankCode", request.getBankCode());
+        if (request.getKeyword() != null) filteredParams.put("keyword", request.getKeyword());
+        if (request.getSkipCount() != null) filteredParams.put("skipCount", request.getSkipCount());
+        if (request.getMaxResultCount() != null) filteredParams.put("maxResultCount", request.getMaxResultCount());
+
+        String hash = md5Stable(filteredParams.toString());
+
+        if (request.getUserId() != null) {
+            return "transaction:user:" + request.getUserId() + ":filters:" + hash;
+        } else if (request.getStatus() != null) {
+            return "transaction:status:" + request.getStatus() + ":filters:" + hash;
+        } else if (request.getType() != null) {
+            return "transaction:type:" + request.getType() + ":filters:" + hash;
+        } else {
+            return "transaction:filters:" + hash;
+        }
+    }
+
+    private static String md5Stable(Object object) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true); // ổn định thứ tự
+            String json = mapper.writeValueAsString(object);
+            return DigestUtils.md5Hex(json);
+        } catch (JsonProcessingException e) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Failed to generate MD5 hash for object" + e.getMessage());
+        }
+    }
+
+    private void removeTransactionCache(Transaction transaction) {
+        redisService.removeKeysByPrefix("transaction:user:" + transaction.getUserId() + ":filters:");
+
+    // Toàn bộ cache theo status/type nếu biết
+        redisService.removeKeysByPrefix("transaction:status:" + transaction.getStatus() + ":filters:");
+        redisService.removeKeysByPrefix("transaction:type:" + transaction.getType() + ":filters:");
+
+    // Cuối cùng, xóa cache không định danh
+        redisService.removeKeysByPrefix("transaction:filters:");
+    }
+
+    private <T> List<T> paginate(List<T> list, int skip, int limit) {
+        int fromIndex = Math.min(skip, list.size());
+        int toIndex = Math.min(fromIndex + limit, list.size());
+        return list.subList(fromIndex, toIndex);
+    }
+
     private String generateCode() {
         return String.format("%08d", new Random().nextInt(100_000_000));
     }
 
+    private void resolveUserIdFromUserFields(TransactionGetAllRequest request) {
+        if (request.getUserId() == null && (
+                request.getUserCode() != null ||
+                        request.getPhoneNumber() != null ||
+                        request.getUserName() != null ||
+                        request.getCmnd() != null)) {
+
+            List<UserResponse> users = userClient.getAllUsers(
+                    0, 1000, null, RoleEnum.USER,
+                    request.getUserName(), null,
+                    request.getPhoneNumber(), request.getCmnd(), request.getUserCode()
+            ).getResult().getData();
+            if (users.size() == 1) {
+                request.setUserId(users.getFirst().getId());
+            }
+        }
+    }
+
+    private TransactionResponse mapToResponse(Transaction tx) {
+        UserResponse user = getUserFromCacheOrFeign(tx.getUserId());
+        return TransactionResponse.builder()
+                .id(tx.getId())
+                .userId(tx.getUserId())
+                .code(tx.getCode())
+                .commitTime(tx.getCommitTime())
+                .amount(tx.getAmount())
+                .status(tx.getStatus())
+                .type(tx.getType())
+                .sourceAccount(tx.getSourceAccount())
+                .destinationAccount(tx.getDestinationAccount())
+                .bankCode(tx.getBankCode())
+                .userName(user.getUserName())
+                .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
+                .cmnd(user.getCmnd())
+                .userCode(user.getCode())
+                .createdAt(tx.getCreatedAt())
+                .updatedAt(tx.getUpdatedAt())
+                .build();
+    }
 
     private String normalize(String input) {
         return (input == null || input.isBlank()) ? null : input.trim();

@@ -29,6 +29,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
                 or c.resolvingNote like %:keyword%
             )
         )
+        order by c.updatedAt desc
         """)
     List<Complain> findAllByFilters(
             @Param("transactionId") UUID transactionId,
@@ -49,6 +50,8 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
             or c.resolvingNote like %:keyword%
         )
     )
+    order by c.updatedAt desc
+
     """)
     List<Complain> findAllUnresolved(
             @Param("transactionId") UUID transactionId,
