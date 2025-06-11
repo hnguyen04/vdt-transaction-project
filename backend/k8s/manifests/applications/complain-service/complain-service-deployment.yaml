@@ -83,3 +83,8 @@ spec:
             configMapKeyRef:
               name: complain-configmap
               key: USER_SERVICE_URL
+        - name: TRANSACTION_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: complain-configmap
+              key: TRANSACTION_SERVICE_URL
