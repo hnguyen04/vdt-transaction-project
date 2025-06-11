@@ -1,5 +1,6 @@
 package com.example.complain_service.dto.complain;
 
+import com.example.complain_service.common.constants.ComplainStatusEnum;
 import com.example.complain_service.common.dto.request.BaseGetAllRequest;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,5 +20,5 @@ public class ComplainGetAllRequest extends BaseGetAllRequest {
     private String transactionCode;
     private UUID userId;
     private String userFullName;
-    private String status;
+    private ComplainStatusEnum status;
 }

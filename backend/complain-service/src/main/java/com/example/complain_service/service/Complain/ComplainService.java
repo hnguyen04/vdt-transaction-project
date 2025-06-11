@@ -396,6 +396,7 @@ public class ComplainService {
     ) {
 
         return ComplainResponse.builder()
+                .id(entity.getId())
                 .transactionId(entity.getTransactionId())
                 .transactionCode(transaction != null ? transaction.getCode() : null)
                 .userId(user.getId())
