@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,7 @@ public class TransactionService {
         this.redisService = redisService;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
     public BaseGetAllResponse<TransactionResponse> getAll(TransactionGetAllRequest request) {
         int skipCount = Optional.ofNullable(request.getSkipCount()).orElse(0);
         int maxResultCount = Optional.ofNullable(request.getMaxResultCount()).orElse(10);
@@ -100,6 +102,8 @@ public class TransactionService {
                 .totalRecords(responseList.size())
                 .build();
     }
+
+
     public TransactionResponse create(TransactionCreateRequest request) {
         Transaction transaction = Transaction.builder()
                 .id(UUID.randomUUID())
@@ -120,6 +124,7 @@ public class TransactionService {
 
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
     @Transactional
     public TransactionResponse update(TransactionUpdateRequest request) {
         Transaction transaction = transactionRepository.findById(request.getId())
@@ -140,6 +145,7 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
     public void delete(UUID id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Transaction not found"));
@@ -147,7 +153,6 @@ public class TransactionService {
         transactionRepository.softDeleteById(id);
         removeTransactionCache(transaction);
     }
-
 
     public TransactionResponse getById(UUID id) {
         Transaction transaction = transactionRepository.findById(id)
@@ -157,6 +162,7 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
     @Transactional
     public TransactionResponse approve(UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)
@@ -173,6 +179,7 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
     @Transactional
     public TransactionResponse reject(UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)

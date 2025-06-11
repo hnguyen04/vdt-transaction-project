@@ -122,7 +122,7 @@ public class AuthService {
 
     // Giả sử tự viết method tạo code 8 số:
     private String generateUserCode() {
-        // Ví dụ tạo code 8 số ngẫu nhiên (bạn có thể thay bằng logic khác)
+        // Ví dụ tạo code 8 số ngẫu nhiên 
         return String.format("%08d", (int)(Math.random() * 100_000_000));
     }
 }
