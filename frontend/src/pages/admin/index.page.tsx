@@ -1,6 +1,9 @@
-import ReportPage from "./reports/overview/page";
+import TransactionPage from "./transactions/page";
+
 const AdminPage = () => {
-  return <ReportPage />;
+  return (
+    <TransactionPage />
+  )
 };
 
 export default AdminPage;

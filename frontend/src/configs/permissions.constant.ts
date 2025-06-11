@@ -1,9 +1,9 @@
 
 export const ALL_PERMISSIONS = {
   Role_Admin: 'Role.ADMIN',
-  Role_Editor: 'Role.SUPER_ADMIN',
-  Role_Viewer: 'Role.STAFF',
-  Role_Editor_Viewer: 'Role.USER',
+  Role_SuperAdmin: 'Role.SUPER_ADMIN',
+  Role_Staff: 'Role.STAFF',
+  Role_User: 'Role.USER',
   
 
 };

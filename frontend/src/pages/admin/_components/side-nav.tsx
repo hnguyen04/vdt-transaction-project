@@ -9,6 +9,8 @@ import {
   ReceiptLongTwoTone as ReceiptIcon,
   PaidTwoTone as PaidIcon,
   HandshakeTwoTone as RequestIcon,
+  MoneyOffTwoTone,
+  HandshakeOutlined,
 } from '@mui/icons-material';
 import {
   Box,
@@ -76,85 +78,32 @@ const SideNav = (props: TSideNavProps) => {
   const items = useMemo<TSideNavItem[]>(
     () => [
       {
-        icon: <PublishedWithChangesRounded />,
-        title: t('Danh sách nhà xuất bản'),
-        path: '/publishers',
-        permissions: [ALL_PERMISSIONS.Publisher_Admin],
+        title: 'Quản lý giao dịch',
+        path: '/transactions',
+        icon: <MoneyOffTwoTone />,
+        permissions: [ALL_PERMISSIONS.Role_Admin, ALL_PERMISSIONS.Role_SuperAdmin, ALL_PERMISSIONS.Role_Staff],
       },
       {
-        icon: <PersonIcon />,
-        title: t('Danh sách tác giả'),
-        path: '/authors',
-        permissions: [ALL_PERMISSIONS.Author_Admin],
-      },
-      {
-        icon: <CategorySharp />,
-        title: t('Danh sách thể loại'),
-        path: '/categories',
-        permissions: [ALL_PERMISSIONS.Category_Admin],
-      },
-      {
-        title: t('Quản lý sách'),
-        path: '/books',
-        icon: <BookIcon />,
-        permissions: [ALL_PERMISSIONS.Book_Create],
-      },
-      {
-        title: t('Quản lý mượn trả sách'),
-        path: '/bookLoans',
-        icon: <ReceiptIcon />,
-        permissions: [ALL_PERMISSIONS.BookLoan_Admin],
-      },
-      {
-        title: t('Quản lý phạt'),
-        path: '/fines',
-        icon: <PaidIcon />,
-        permissions: [ALL_PERMISSIONS.Fine_Admin],
-      },
-      {
-        title: t('Danh mục sách'),
-        path: '/client/books',
-        icon: <BookIcon />,
-        permissions: [ALL_PERMISSIONS.Book_Client],
-      },
-      {
-        title: t('Danh mục sách mượn'),
-        path: '/client/bookLoans',
-        icon: <ReceiptIcon />,
-        permissions: [ALL_PERMISSIONS.BookLoan_Client],
-      },
-      {
-        title: t('Danh sách yêu cầu đã tạo'),
-        path: '/client/bookRequests',
-        icon: <RequestIcon />,
-        permissions: [ALL_PERMISSIONS.BookRequest_Client],
-      },
-      {
-        title: t('Danh sách hình phạt'),
-        path: '/client/fines',
-        icon: <PaidIcon />,
-        permissions: [ALL_PERMISSIONS.Fine_Client]
+        title: 'Quản lý khiếu nại',
+        path: '/complaints',
+        icon: <HandshakeOutlined />,
+        permissions: [ALL_PERMISSIONS.Role_Admin, ALL_PERMISSIONS.Role_SuperAdmin, ALL_PERMISSIONS.Role_Staff],
       },
       {
         title: t('Quản trị'),
         basePath: '/system',
         icon: <GroupIcon />,
-        permissions: [ALL_PERMISSIONS.User_GetAll],
+        permissions: [ALL_PERMISSIONS.Role_Admin, ALL_PERMISSIONS.Role_SuperAdmin],
         children: [
-          {
-            title: t('Vai trò'),
-            path: '/system/roles',
-            permissions: [ALL_PERMISSIONS.Role_Update],
-          },
           {
             title: t('Danh sách người dùng'),
             path: '/system/accounts',
-            permissions: [ALL_PERMISSIONS.User_GetAll],
+            permissions: [ALL_PERMISSIONS.Role_Admin, ALL_PERMISSIONS.Role_SuperAdmin],
           },
           {
             title: t('Danh sách nhân viên'),
             path: '/system/staffs',
-            permissions: [ALL_PERMISSIONS.Staff_GetAll],
+            permissions: [ALL_PERMISSIONS.Role_Admin, ALL_PERMISSIONS.Role_SuperAdmin],
           }
         ]
       },

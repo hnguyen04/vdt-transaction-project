@@ -9,7 +9,7 @@ class MyAccountService {
   }, data: Partial<IUserInfo>): Promise<void> {
     await httpService.request<TBaseResponse<void>>({
       method: 'PUT',
-      url: '/users/Update',
+      url: '/auth/users/Update',
       params,
       data,
     });
@@ -21,7 +21,7 @@ class MyAccountService {
   }): Promise<void> {
     await httpService.request<TBaseResponse<void>>({
       method: 'PUT',
-      url: '/users/ChangePassword',
+      url: '/auth/users/ChangePassword',
       data,
     });
   }

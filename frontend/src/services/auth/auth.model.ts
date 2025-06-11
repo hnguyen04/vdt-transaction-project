@@ -5,6 +5,13 @@ export enum ERole {
   SUPER_ADMIN = 'SUPER_ADMIN'
 }
 
+export const roleOptions = [
+    { label: 'Người dùng', value: ERole.USER },
+    { label: 'Quản trị viên', value: ERole.ADMIN },
+    { label: 'Nhân viên', value: ERole.STAFF },
+    { label: 'Siêu quản trị', value: ERole.SUPER_ADMIN },
+];
+
 export interface ILoginInput {
   userName: string;
   password: string;

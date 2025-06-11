@@ -1,6 +1,6 @@
 export const ACCESS_TOKEN_KEY = 'accessToken';
 export const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT;
-export const APP_NAME = 'Lib Mng';
+export const APP_NAME = 'VDT';
 
 export const ADMIN_LAYOUT = {
   SIDE_NAV_WIDTH: 300,

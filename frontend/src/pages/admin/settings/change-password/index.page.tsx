@@ -15,7 +15,7 @@ const ChangePasswordPage = () => {
     <BaseBasicPage name="my-account" title={t('Đổi mật khẩu')}>
       {authQuery.data && (
         <Grid container spacing={2} sx={{ height: 'calc(100% - 50px)' }}>
-          <Grid xs={12} md={12} sx={{ height: '100%' }}>
+          <Grid xs={12} md={8} sx={{ height: '100%' }}>
             <SecurityForm />
           </Grid>
         </Grid>

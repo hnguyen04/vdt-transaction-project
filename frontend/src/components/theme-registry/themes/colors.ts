@@ -70,7 +70,7 @@ export const error = withAlphas({
 export const primary = withAlphas({
   lightest: '#e5edf9',
   light: '#c5daf2',
-  main: '#1d4e89',
+  main: '#15305a',
   dark: '#1b4271',
   darkest: '#1c395e',
   contrastText: '#FFFFFF',

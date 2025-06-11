@@ -9,7 +9,7 @@ class ChangePasswordService {
   }): Promise<void> {
     await httpService.request<TBaseResponse<void>>({
       method: 'PUT',
-      url: '/users/ChangePassword',
+      url: '/auth/users/ChangePassword',
       data,
     });
   }

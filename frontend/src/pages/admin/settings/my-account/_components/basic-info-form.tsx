@@ -23,9 +23,10 @@ const BasicInfoForm = ({ authQuery }: TBasicInfoFormProps) => {
 
   const defaultData = useMemo(
     () => ({
-      name: authQuery.data?.name,
       userName: authQuery.data?.userName,
-      email: authQuery.data?.email,
+      fullName: authQuery.data?.fullName,
+      phoneNumber: authQuery.data?.phoneNumber,
+      cmnd: authQuery.data?.cmnd,
     }),
     [authQuery.data],
   );
@@ -35,21 +36,21 @@ const BasicInfoForm = ({ authQuery }: TBasicInfoFormProps) => {
   const schema = useMemo(
     () =>
       yup.object().shape({
-        name: yup.string().required(t('field-required')),
         userName: yup.string().required(t('field-required')),
-        email: yup
-          .string()
-          .email(t('Email không hợp lệ'))
-          .required(t('field-required')),
+        fullName: yup.string().required(t('field-required')),
+        phoneNumber: yup.string().required(t('field-required')),
+        cmnd: yup.string().required(t('field-required')),
       }),
     [t],
   );
 
   const methods = useForm({
     defaultValues: {
-      name: '',
       userName: '',
-      email: '',
+      fullName: '',
+      phoneNumber: '',
+      cmnd: '',
+      
     },
     resolver: yupResolver(schema),
   });
@@ -111,20 +112,26 @@ const BasicInfoForm = ({ authQuery }: TBasicInfoFormProps) => {
           <BaseCrudFormContainer
             fields={[
               {
-                name: 'name',
+                name: 'userName',
                 label: t('Tên đăng nhập'),
                 type: 'text',
                 readOnly: true,
               },
               {
-                name: 'userName',
+                name: 'fullName',
                 label: t('Họ tên'),
                 type: 'text',
                 required: true,
               },
               {
-                name: 'email',
-                label: t('E-mail'),
+                name: 'phoneNumber',
+                label: t('Số điện thoại'),
+                type: 'text',
+                required: true,
+              },
+              {
+                name: 'cmnd',
+                label: t('CMND/CCCD'),
                 type: 'text',
                 required: true,
               },
