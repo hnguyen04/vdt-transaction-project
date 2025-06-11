@@ -1,5 +1,6 @@
 package com.example.complain_service.controller;
 
+import com.example.complain_service.common.constants.ComplainStatusEnum;
 import com.example.complain_service.common.dto.response.ApiResponse;
 import com.example.complain_service.common.dto.response.BaseGetAllResponse;
 import com.example.complain_service.dto.complain.*;
@@ -43,7 +44,7 @@ public class ComplainController {
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "userId", required = false) UUID userId,
             @RequestParam(value = "resolverId", required = false) UUID resolverId,
-            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "status", required = false) ComplainStatusEnum status,
             @RequestParam(value = "resolverFullName", required = false) String resolverFullName,
             @RequestParam(value = "userFullName", required = false) String userFullName,
             @RequestParam(value = "transactionId", required = false) UUID transactionId,
@@ -90,7 +91,7 @@ public class ComplainController {
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "userId", required = false) UUID userId,
             @RequestParam(value = "resolverId", required = false) UUID resolverId,
-            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "status", required = false) ComplainStatusEnum status,
             @RequestParam(value = "resolverFullName", required = false) String resolverFullName,
             @RequestParam(value = "userFullName", required = false) String userFullName,
             @RequestParam(value = "transactionId", required = false) UUID transactionId,

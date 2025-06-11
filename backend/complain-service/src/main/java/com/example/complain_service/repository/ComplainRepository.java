@@ -1,5 +1,6 @@
 package com.example.complain_service.repository;
 
+import com.example.complain_service.common.constants.ComplainStatusEnum;
 import com.example.complain_service.entity.Complain;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -34,7 +35,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
     List<Complain> findAllByFilters(
             @Param("transactionId") UUID transactionId,
             @Param("resolverId") UUID resolverId,
-            @Param("status") String status,
+            @Param("status") ComplainStatusEnum status,
             @Param("keyword") String keyword
     );
 

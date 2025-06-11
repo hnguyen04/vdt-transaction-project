@@ -164,7 +164,7 @@ public class ComplainService {
         String keyword = normalize(request.getKeyword());
         String userFullName = normalize(request.getUserFullName());
         String resolverFullName = normalize(request.getResolverFullName());
-        String status = normalize(request.getStatus());
+        ComplainStatusEnum status = request.getStatus();
         String transactionCode = normalize(request.getTransactionCode());
         UUID userId = request.getUserId() != null ? request.getUserId() : null;
         UUID resolverId = request.getResolverId() != null ? request.getResolverId() : null;
