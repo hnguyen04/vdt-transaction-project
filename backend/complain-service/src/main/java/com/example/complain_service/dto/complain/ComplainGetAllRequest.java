@@ -15,6 +15,8 @@ import java.util.UUID;
 public class ComplainGetAllRequest extends BaseGetAllRequest {
     private UUID resolverId;
     private String resolverFullName;
+    private UUID transactionId;
+    private String transactionCode;
     private UUID userId;
     private String userFullName;
     private String status;

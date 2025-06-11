@@ -1,15 +1,13 @@
-package com.example.transaction_service.dto.transaction;
+package com.example.complain_service.dto.transaction;
 
-import com.example.transaction_service.common.constants.TransactionStatusEnum;
-import com.example.transaction_service.common.constants.TransactionTypeEnum;
-import com.example.transaction_service.common.dto.request.BaseGetAllRequest;
-import jakarta.persistence.*;
+import com.example.complain_service.common.constants.TransactionStatusEnum;
+import com.example.complain_service.common.constants.TransactionTypeEnum;
+import com.example.complain_service.common.dto.request.BaseGetAllRequest;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.GenericGenerator;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter

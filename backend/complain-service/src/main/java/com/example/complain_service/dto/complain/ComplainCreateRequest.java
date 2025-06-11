@@ -17,5 +17,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ComplainCreateRequest{
     private UUID userId;
+    private UUID transactionId;
     private String content;
 }

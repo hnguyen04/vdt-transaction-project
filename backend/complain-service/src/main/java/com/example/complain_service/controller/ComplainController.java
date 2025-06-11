@@ -45,9 +45,9 @@ public class ComplainController {
             @RequestParam(value = "resolverId", required = false) UUID resolverId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "resolverFullName", required = false) String resolverFullName,
-            @RequestParam(value = "userFullName", required = false) String userFullName
-
-
+            @RequestParam(value = "userFullName", required = false) String userFullName,
+            @RequestParam(value = "transactionId", required = false) UUID transactionId,
+            @RequestParam(value = "transactionCode", required = false) String transactionCode
     ) {
         ComplainGetAllRequest request = ComplainGetAllRequest.builder()
                 .userId(userId)
@@ -55,6 +55,8 @@ public class ComplainController {
                 .status(status)
                 .resolverFullName(resolverFullName)
                 .userFullName(userFullName)
+                .transactionId(transactionId)
+                .transactionCode(transactionCode)
                 .build();
 
         request.setSkipCount(skipCount);
@@ -90,8 +92,9 @@ public class ComplainController {
             @RequestParam(value = "resolverId", required = false) UUID resolverId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "resolverFullName", required = false) String resolverFullName,
-            @RequestParam(value = "userFullName", required = false) String userFullName
-
+            @RequestParam(value = "userFullName", required = false) String userFullName,
+            @RequestParam(value = "transactionId", required = false) UUID transactionId,
+            @RequestParam(value = "transactionCode", required = false) String transactionCode
 
     ) {
         ComplainGetAllRequest request = ComplainGetAllRequest.builder()
@@ -100,6 +103,8 @@ public class ComplainController {
                 .status(status)
                 .resolverFullName(resolverFullName)
                 .userFullName(userFullName)
+                .transactionCode(transactionCode)
+                .transactionId(transactionId)
                 .build();
 
         request.setSkipCount(skipCount);

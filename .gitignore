@@ -101,3 +101,6 @@ test-output/
 
 *-secret.yaml
 *-configmap.yaml
+
+*.secret.json
+*.configmap.json

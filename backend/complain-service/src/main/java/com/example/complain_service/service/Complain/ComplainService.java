@@ -1,5 +1,6 @@
 package com.example.complain_service.service.Complain;
 
+import com.example.complain_service.client.TransactionClient;
 import com.example.complain_service.client.UserClient;
 import com.example.complain_service.common.constants.CacheKeys;
 import com.example.complain_service.common.constants.ComplainStatusEnum;
@@ -9,6 +10,7 @@ import com.example.complain_service.common.dto.response.BaseGetAllResponse;
 import com.example.complain_service.common.exception.AppException;
 import com.example.complain_service.common.exception.ErrorCode;
 import com.example.complain_service.dto.complain.*;
+import com.example.complain_service.dto.transaction.TransactionResponse;
 import com.example.complain_service.dto.user.UserResponse;
 import com.example.complain_service.entity.Complain;
 import com.example.complain_service.repository.ComplainRepository;
@@ -19,11 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,12 +32,13 @@ public class ComplainService {
 
     private final ComplainRepository repository;
     private final UserClient userClient;
+    private final TransactionClient transactionClient;
     private final RedisService redisService;
 
 
     public ComplainResponse create(ComplainCreateRequest request) {
         var entity = com.example.complain_service.entity.Complain.builder()
-                .userId(request.getUserId())
+                .transactionId(request.getUserId())
                 .content(request.getContent())
                 .status(ComplainStatusEnum.PENDING)
                 .timeSubmit(LocalDateTime.now())
@@ -47,20 +47,24 @@ public class ComplainService {
         entity = repository.save(entity);
 
         // Lấy dữ liệu user/resolver
-        UserResponse userData = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        UserResponse userData = fetchUserInfo(transactionData.getUserId());
         UserResponse resolverData = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, userData, resolverData);
+        return mapToResponse(entity, userData, resolverData, transactionData);
     }
 
     public ComplainResponse getById(UUID id) {
         var entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Complain not found with id: " + id));
 
-        var userData = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var userData = fetchUserInfo(transactionData.getUserId());
         var resolverData = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, userData, resolverData);
+        return mapToResponse(entity, userData, resolverData, transactionData);
     }
 
     public ComplainResponse update(ComplainUpdateRequest request) {
@@ -72,10 +76,12 @@ public class ComplainService {
         }
         entity = repository.save(entity);
 
-        var userData = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var userData = fetchUserInfo(transactionData.getUserId());
         var resolverData = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, userData, resolverData);
+        return mapToResponse(entity, userData, resolverData, transactionData);
     }
 
     public void delete(UUID id) {
@@ -90,10 +96,12 @@ public class ComplainService {
         entity.setResolverId(request.getResolverId());
         entity = repository.save(entity);
 
-        var user = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var user = fetchUserInfo(transactionData.getUserId());
         var resolver = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, user, resolver);
+        return mapToResponse(entity, user, resolver, transactionData);
     }
 
     public ComplainResponse assign(ComplainAssignRequest request) {
@@ -103,10 +111,12 @@ public class ComplainService {
         entity.setResolverId(request.getResolverId());
         entity = repository.save(entity);
 
-        var user = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var user = fetchUserInfo(transactionData.getUserId());
         var resolver = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, user, resolver);
+        return mapToResponse(entity, user, resolver, transactionData);
     }
 
     public ComplainResponse resolve(ComplainAssignRequest request) {
@@ -118,10 +128,12 @@ public class ComplainService {
         entity.setStatus(ComplainStatusEnum.RESOLVED);
         entity = repository.save(entity);
 
-        var user = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var user = fetchUserInfo(transactionData.getUserId());
         var resolver = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, user, resolver);
+        return mapToResponse(entity, user, resolver, transactionData);
     }
 
     public ComplainResponse note(ComplainNoteRequest request) {
@@ -131,10 +143,12 @@ public class ComplainService {
         entity.setResolvingNote(request.getNote());
         entity = repository.save(entity);
 
-        var user = fetchUserInfo(entity.getUserId());
+        TransactionResponse transactionData = transactionClient.getTransactionById(entity.getTransactionId())
+                .getResult();
+        var user = fetchUserInfo(transactionData.getUserId());
         var resolver = fetchUserInfo(entity.getResolverId());
 
-        return mapToResponse(entity, user, resolver);
+        return mapToResponse(entity, user, resolver, transactionData);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
@@ -146,11 +160,23 @@ public class ComplainService {
         String userFullName = normalize(request.getUserFullName());
         String resolverFullName = normalize(request.getResolverFullName());
         String status = normalize(request.getStatus());
+        String transactionCode = normalize(request.getTransactionCode());
         UUID userId = request.getUserId() != null ? request.getUserId() : null;
         UUID resolverId = request.getResolverId() != null ? request.getResolverId() : null;
+        UUID transactionId = request.getTransactionId() != null ? request.getTransactionId() : null;
 
         List<ComplainResponse> result = new ArrayList<>();
 
+        if (transactionCode != null && transactionId == null) {
+            // Nếu có transactionCode thì lấy transactionId từ transaction service
+            ApiResponse<BaseGetAllResponse<TransactionResponse>> txResp = transactionClient.getAllTransactions(
+                    0, 1000, null, null, transactionCode, null,
+                    null, null, null, null, null, null, null, null);
+
+            if (txResp.isSuccess() && !txResp.getResult().getData().isEmpty()) {
+                transactionId = txResp.getResult().getData().getFirst().getId();
+            }
+        }
 
         List<UUID> userIds = new ArrayList<>();
         if (userFullName != null || keyword != null) {
@@ -181,29 +207,64 @@ public class ComplainService {
             resolverIds.add(resolverId);
         }
 
-        for (UUID uid : userIds) {
-            UserResponse user = fetchUserInfo(uid);
-            var complains = repository.findAllByFilters(uid, null, status, null);
-            for (Complain c : complains) {
-                UserResponse resolver = fetchUserInfo(c.getResolverId());
-                result.add(mapToResponse(c, user, resolver));
-            }
-        }
+        Map<UUID, UserResponse> userCache = new HashMap<>();
+        Map<UUID, UserResponse> resolverCache = new HashMap<>();
+        Map<UUID, TransactionResponse> transactionCache = new HashMap<>();
 
+// Helper methods
+        Function<UUID, UserResponse> getUser = id ->
+                id == null ? null : userCache.computeIfAbsent(id, this::fetchUserInfo);
+
+        Function<UUID, UserResponse> getResolver = id ->
+                id == null ? null : resolverCache.computeIfAbsent(id, this::fetchUserInfo);
+
+        Function<UUID, TransactionResponse> getTransaction = id ->
+                transactionCache.computeIfAbsent(id,
+                        tid -> transactionClient.getTransactionById(tid).getResult());
+
+        if (transactionId == null) {
+// ====== 1. Complains theo userIds ======
+            for (UUID uid : userIds) {
+                UserResponse user = getUser.apply(uid);
+
+                List<TransactionResponse> transactions = transactionClient.getAllTransactions(
+                        0, 1000, null, uid, null, null,
+                        null, null, null, null, null, null, null, null
+                ).getResult().getData();
+
+                for (TransactionResponse tx : transactions) {
+                    UUID txId = tx.getId();
+                    transactionCache.put(txId, tx);
+
+                    List<Complain> complains = repository.findAllByFilters(txId, null, status, null);
+                    for (Complain c : complains) {
+                        UserResponse resolver = getResolver.apply(c.getResolverId());
+                        result.add(mapToResponse(c, user, resolver, tx));
+                    }
+                }
+            }
+
+        }
+// ====== 2. Complains theo resolverIds ======
         for (UUID rid : resolverIds) {
-            UserResponse resolver = fetchUserInfo(rid);
-            var complains = repository.findAllByFilters(null, rid, status, null);
+            UserResponse resolver = getResolver.apply(rid);
+
+            var complains = repository.findAllByFilters(transactionId, rid, status, null);
             for (Complain c : complains) {
-                UserResponse user = fetchUserInfo(c.getUserId());
-                result.add(mapToResponse(c, user, resolver));
+                TransactionResponse tx = getTransaction.apply(c.getTransactionId());
+                UserResponse user = getUser.apply(tx.getUserId());
+                result.add(mapToResponse(c, user, resolver, tx));
             }
         }
 
-        var allComplains = repository.findAllByFilters(null, null, status, keyword);
+
+// ====== 3. Complains theo keyword ======
+        var allComplains = repository.findAllByFilters(transactionId, null, status, keyword);
         for (Complain c : allComplains) {
-            UserResponse user = fetchUserInfo(c.getUserId());
-            UserResponse resolver = fetchUserInfo(c.getResolverId());
-            result.add(mapToResponse(c, user, resolver));
+            TransactionResponse tx = getTransaction.apply(c.getTransactionId());
+            UserResponse user = getUser.apply(tx.getUserId());
+            UserResponse resolver = getResolver.apply(c.getResolverId());
+            result.add(mapToResponse(c, user, resolver, tx));
         }
 
         // Phân trang sau khi map luôn
@@ -222,10 +283,22 @@ public class ComplainService {
     public BaseGetAllResponse<ComplainResponse> getAllUnresolved(ComplainGetAllRequest request) {
         int skipCount = Optional.ofNullable(request.getSkipCount()).orElse(0);
         int maxResultCount = Optional.ofNullable(request.getMaxResultCount()).orElse(10);
-
+        String transactionCode = normalize(request.getTransactionCode());
         String keyword = normalize(request.getKeyword());
         String userFullName = normalize(request.getUserFullName());
         UUID userId = request.getUserId();
+        UUID transactionId = request.getTransactionId() != null ? request.getTransactionId() : null;
+
+        if (transactionCode != null && transactionId == null) {
+            // Nếu có transactionCode thì lấy transactionId từ transaction service
+            ApiResponse<BaseGetAllResponse<TransactionResponse>> txResp = transactionClient.getAllTransactions(
+                    0, 1000, null, null, transactionCode, null,
+                    null, null, null, null, null, null, null, null);
+
+            if (txResp.isSuccess() && !txResp.getResult().getData().isEmpty()) {
+                transactionId = txResp.getResult().getData().getFirst().getId();
+            }
+        }
 
         List<UUID> userIds = new ArrayList<>();
 
@@ -243,21 +316,53 @@ public class ComplainService {
 
         List<ComplainResponse> result = new ArrayList<>();
 
-        for (UUID uid : userIds) {
-            var complains = repository.findAllUnresolved(uid, keyword);
-            UserResponse user = fetchUserInfo(uid);
+        Map<UUID, UserResponse> userCache = new HashMap<>();
+        Map<UUID, UserResponse> resolverCache = new HashMap<>();
+        Map<UUID, TransactionResponse> transactionCache = new HashMap<>();
 
-            for (Complain c : complains) {
-                UserResponse resolver = fetchUserInfo(c.getResolverId());
-                result.add(mapToResponse(c, user, resolver));
+        Function<UUID, UserResponse> getUser = id ->
+                id == null ? null : userCache.computeIfAbsent(id, this::fetchUserInfo);
+
+        Function<UUID, UserResponse> getResolver = id ->
+                id == null ? null : resolverCache.computeIfAbsent(id, this::fetchUserInfo);
+
+        Function<UUID, TransactionResponse> getTransaction = id ->
+                transactionCache.computeIfAbsent(id,
+                        tid -> transactionClient.getTransactionById(tid).getResult());
+
+        if (transactionId == null) {
+
+// ====== 1. Theo danh sách userIds ======
+            for (UUID uid : userIds) {
+                // Lấy tất cả transaction của user
+                List<TransactionResponse> transactions = transactionClient.getAllTransactions(
+                        0, 1000, null, uid, null, null,
+                        null, null, null, null, null, null, null, null
+                ).getResult().getData();
+
+                UserResponse user = getUser.apply(uid);
+
+                for (TransactionResponse tx : transactions) {
+                    UUID txId = tx.getId();
+                    transactionCache.put(txId, tx);
+
+                    List<Complain> complains = repository.findAllUnresolved(txId, keyword);
+                    for (Complain c : complains) {
+                        UserResponse resolver = getResolver.apply(c.getResolverId());
+                        result.add(mapToResponse(c, user, resolver, tx));
+                    }
+                }
             }
         }
 
-        var complains = repository.findAllUnresolved(null, keyword);
+// ====== 2. Các complain chưa resolve còn lại (không thuộc userIds cụ thể) ======
+        List<Complain> complains = repository.findAllUnresolved(transactionId, keyword);
         for (Complain c : complains) {
-            UserResponse user = fetchUserInfo(c.getUserId());
-            UserResponse resolver = fetchUserInfo(c.getResolverId());
-            result.add(mapToResponse(c, user, resolver));
+            TransactionResponse tx = getTransaction.apply(c.getTransactionId());
+            UserResponse user = getUser.apply(tx.getUserId());
+            UserResponse resolver = getResolver.apply(c.getResolverId());
+
+            result.add(mapToResponse(c, user, resolver, tx));
         }
 
         // Phân trang
@@ -281,12 +386,16 @@ public class ComplainService {
     private ComplainResponse mapToResponse(
             Complain entity,
             UserResponse user,
-            UserResponse resolver) {
+            UserResponse resolver,
+            TransactionResponse transaction
+    ) {
 
         return ComplainResponse.builder()
-                .userId(entity.getUserId())
-                .userName(user != null ? user.getUserName() : null)
-                .userFullName(user != null ? user.getFullName() : null)
+                .transactionId(entity.getTransactionId())
+                .transactionCode(transaction != null ? transaction.getCode() : null)
+                .userId(user.getId())
+                .userName(user.getUserName())
+                .userFullName(user.getFullName())
                 .content(entity.getContent())
                 .resolverId(entity.getResolverId())
                 .resolverName(resolver != null ? resolver.getUserName() : null)

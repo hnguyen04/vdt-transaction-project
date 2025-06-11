@@ -20,7 +20,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
     @Query("""
         select c from Complain c
         where c.isDeleted = false
-        and (:userId is null or c.userId = :userId)
+        and (:transactionId is null or c.transactionId = :transactionId)
         and (:resolverId is null or c.resolverId = :resolverId)
         and (:status is null or c.status = :status)
         and (
@@ -31,7 +31,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
         )
         """)
     List<Complain> findAllByFilters(
-            @Param("userId") UUID userId,
+            @Param("transactionId") UUID transactionId,
             @Param("resolverId") UUID resolverId,
             @Param("status") String status,
             @Param("keyword") String keyword
@@ -42,7 +42,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
     where c.isDeleted = false
     and c.status = 'PENDING'
     and c.resolverId is null
-    and (:userId is null or c.userId = :userId)
+    and (:transactionId is null or c.transactionId = :transactionId)
     and (
         :keyword is null or (
             c.content like %:keyword%
@@ -51,7 +51,7 @@ public interface ComplainRepository extends JpaRepository<Complain, UUID> {
     )
     """)
     List<Complain> findAllUnresolved(
-            @Param("userId") UUID userId,
+            @Param("transactionId") UUID transactionId,
             @Param("keyword") String keyword
     );
 

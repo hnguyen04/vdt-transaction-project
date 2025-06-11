@@ -54,6 +54,7 @@ user:
   service:
     url: ${USER_SERVICE_URL}
 
+
 springdoc:
   swagger-ui:
     use-root-path: true
@@ -70,6 +71,19 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         minimumNumberOfCalls: 5
         automaticTransitionFromOpenToHalfOpenEnabled: true
+      transaction-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        minimumNumberOfCalls: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+transaction:
+  service:
+    url: ${TRANSACTION_SERVICE_URL}
+
 
 # Enable debug logs for resilience if needed
 logging:

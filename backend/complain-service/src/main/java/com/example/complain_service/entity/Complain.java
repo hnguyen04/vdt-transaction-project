@@ -29,8 +29,8 @@ public class Complain extends BaseEntity {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    @Column(name = "transaction_id", nullable = false)
+    private UUID transactionId;
 
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
