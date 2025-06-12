@@ -53,7 +53,7 @@ public class ComplainService {
         UserResponse resolverData = fetchUserInfo(entity.getResolverId());
 
         return mapToResponse(entity, userData, resolverData, transactionData);
-    } 
+    }
 
     public ComplainResponse getById(UUID id) {
         var entity = repository.findById(id)
@@ -250,21 +250,23 @@ public class ComplainService {
             }
 
         }
+        if (resolverId == null) {
 // ====== 2. Complains theo resolverIds ======
-        for (UUID rid : resolverIds) {
-            UserResponse resolver = getResolver.apply(rid);
+            for (UUID rid : resolverIds) {
+                UserResponse resolver = getResolver.apply(rid);
 
-            var complains = repository.findAllByFilters(transactionId, rid, status, null);
-            for (Complain c : complains) {
-                TransactionResponse tx = getTransaction.apply(c.getTransactionId());
-                UserResponse user = getUser.apply(tx.getUserId());
-                result.add(mapToResponse(c, user, resolver, tx));
+                var complains = repository.findAllByFilters(transactionId, rid, status, null);
+                for (Complain c : complains) {
+                    TransactionResponse tx = getTransaction.apply(c.getTransactionId());
+                    UserResponse user = getUser.apply(tx.getUserId());
+                    result.add(mapToResponse(c, user, resolver, tx));
+                }
             }
         }
 
 
 // ====== 3. Complains theo keyword ======
-        var allComplains = repository.findAllByFilters(transactionId, null, status, keyword);
+        var allComplains = repository.findAllByFilters(transactionId, resolverId, status, keyword);
         for (Complain c : allComplains) {
             TransactionResponse tx = getTransaction.apply(c.getTransactionId());
             UserResponse user = getUser.apply(tx.getUserId());
@@ -359,7 +361,6 @@ public class ComplainService {
                 }
             }
         }
-
 // ====== 2. Các complain chưa resolve còn lại (không thuộc userIds cụ thể) ======
         List<Complain> complains = repository.findAllUnresolved(transactionId, keyword);
         for (Complain c : complains) {

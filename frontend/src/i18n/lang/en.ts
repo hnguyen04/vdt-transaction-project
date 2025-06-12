@@ -477,5 +477,7 @@ export const en = {
   'Nhập lại mật khẩu mới': 'Re-enter password',
   'Tên người dùng': 'Username',
   'Đăng ký': 'Register Account',
+  'Mật khẩu hiện tại': 'Current Password',
+  'Mật khẩu mới': 'New Password',
 
 };
