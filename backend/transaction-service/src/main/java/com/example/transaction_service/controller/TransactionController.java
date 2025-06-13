@@ -54,7 +54,8 @@ public class TransactionController {
             @RequestParam(value = "userName", required = false) String userName,
             @RequestParam(value = "phoneNumber", required = false) String phoneNumber,
             @RequestParam(value = "cmnd", required = false) String cmnd,
-            @RequestParam(value = "userCode", required = false) String userCode
+            @RequestParam(value = "userCode", required = false) String userCode,
+            @RequestParam(value = "userFullName", required = false) String userFullName
     ) {
         TransactionGetAllRequest request = TransactionGetAllRequest.builder()
                 .userId(userId)
@@ -68,6 +69,7 @@ public class TransactionController {
                 .phoneNumber(phoneNumber)
                 .cmnd(cmnd)
                 .userCode(userCode)
+                .userFullName(userFullName)
                 .build();
         request.setSkipCount(skipCount);
         request.setMaxResultCount(maxResultCount);

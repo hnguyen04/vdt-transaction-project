@@ -27,6 +27,7 @@ public class TransactionGetAllRequest extends BaseGetAllRequest {
     private String destinationAccount;
     private String bankCode;
     private String userName;
+    private String userFullName;
     private String phoneNumber;
     private String cmnd;
     private String userCode;

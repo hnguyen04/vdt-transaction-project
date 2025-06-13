@@ -19,7 +19,6 @@ public class FeignClientConfiguration {
             RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
             if (requestAttributes instanceof ServletRequestAttributes servletRequestAttributes) {
                 String token = servletRequestAttributes.getRequest().getHeader("Authorization");
-                System.out.println("[FeignClientConfiguration] Token from HTTP header: " + token);
                 if (token != null) {
                     requestTemplate.header("Authorization", token);
                 }

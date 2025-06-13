@@ -36,7 +36,8 @@ public class TransactionClientFallBackFactory implements FallbackFactory<Transac
                     String userName,
                     String phoneNumber,
                     String cmnd,
-                    String userCode
+                    String userCode,
+                    String userFullName
             ) {
                 BaseGetAllResponse<TransactionResponse> emptyResponse = BaseGetAllResponse.<TransactionResponse>builder()
                         .data(Collections.emptyList())

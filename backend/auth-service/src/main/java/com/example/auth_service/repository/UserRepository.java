@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByPhoneNumber(String phoneNumber);
 
     @Modifying
+    @Transactional
     @Query("update User u set u.isDeleted = true where u.id = :id")
     void softDeleteById(@Param("id") UUID id);
 
@@ -30,6 +32,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
         AND (:phoneNumber IS NULL OR u.phoneNumber LIKE %:phoneNumber%)
         AND (:cmnd IS NULL OR u.cmnd LIKE %:cmnd%)
         AND (:role IS NULL OR u.role = :role)
+        AND (:code IS NULL OR u.code LIKE %:code%)
         AND (
             :keyword IS NULL OR (
                 u.userName LIKE %:keyword%

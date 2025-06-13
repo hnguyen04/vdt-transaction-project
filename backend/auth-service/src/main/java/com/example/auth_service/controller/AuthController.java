@@ -5,6 +5,8 @@ import com.example.auth_service.dto.auth.*;
 import com.example.auth_service.service.auth.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -55,5 +57,14 @@ public class AuthController {
                 .code(result.getUserName() != null ? 200 : 401)
                 .build();
     }
+
+    @GetMapping("/whoami")
+    public ResponseEntity<?> whoami(Authentication authentication) {
+        System.out.println("authenticatedwith" + authentication);
+        return ResponseEntity.ok(authentication.getAuthorities());
+
+    }
+
+
 }
 

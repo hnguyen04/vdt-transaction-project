@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     boolean existsByCode(String code);
 
     @Modifying
+    @Transactional
     @Query("update Transaction t set t.isDeleted = true where t.id = :id")
     void softDeleteById(@Param("id") UUID id);
 

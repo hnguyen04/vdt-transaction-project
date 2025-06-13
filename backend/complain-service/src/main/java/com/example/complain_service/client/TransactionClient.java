@@ -38,7 +38,8 @@ public interface TransactionClient {
             @RequestParam(value = "userName", required = false) String userName,
             @RequestParam(value = "phoneNumber", required = false) String phoneNumber,
             @RequestParam(value = "cmnd", required = false) String cmnd,
-            @RequestParam(value = "userCode", required = false) String userCode
+            @RequestParam(value = "userCode", required = false) String userCode,
+            @RequestParam(value = "userFullName", required = false) String userFullName
     );
 
     @GetMapping("/transactions/GetById")

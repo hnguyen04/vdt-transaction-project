@@ -61,45 +61,111 @@ public class TransactionService {
         TransactionTypeEnum type = request.getType();
         String sourceAccount = normalize(request.getSourceAccount());
         String destinationAccount = normalize(request.getDestinationAccount());
-        UUID userId = request.getUserId() != null ? request.getUserId() : null;
 
-        resolveUserIdFromUserFields(request);
+        List<UUID> userIds = resolveUserIdsFromUserFields(request);
+        UUID requestedUserId = request.getUserId();
 
-        String cacheKey = buildCacheKey(request);
-        boolean shouldUseCache = request.getSkipCount() == 0 && request.getMaxResultCount() <= 100;
-
-        if (shouldUseCache) {
-            List<TransactionResponse> cachedList = redisService.getList(cacheKey, TransactionResponse.class);
-            if (cachedList != null && !cachedList.isEmpty()) {
+        // Nếu cần tìm theo userFields nhưng không tìm được gì, hoặc userId không khớp → trả rỗng
+        if (shouldSearchByUserFields(request)) {
+            if (userIds.isEmpty() || (requestedUserId != null && !userIds.contains(requestedUserId))) {
                 return BaseGetAllResponse.<TransactionResponse>builder()
-                        .data(paginate(cachedList, skipCount, maxResultCount))
-                        .totalRecords(cachedList.size())
+                        .data(Collections.emptyList())
+                        .totalRecords(0)
                         .build();
             }
         }
 
-        List<Transaction> transactionList = transactionRepository.findAllWithFilters(
-                userId,
-                code,
-                status,
-                type,
-                sourceAccount,
-                destinationAccount,
-                bankCode,
-                keyword
-        );
+        boolean shouldUseCache = skipCount == 0 && maxResultCount <= 100;
 
-        List<TransactionResponse> responseList = transactionList.stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        // ✅ Trường hợp <1 user → dùng cache theo cách cũ
+        if (requestedUserId != null || userIds.size() <= 1) {
+            UUID effectiveUserId = requestedUserId;
+            if (effectiveUserId == null && !userIds.isEmpty()) {
+                effectiveUserId = userIds.getFirst();
+                request.setUserId(effectiveUserId); // cập nhật để build cache key chính xác
+            }
 
-        if (shouldUseCache) {
-            redisService.setList(cacheKey, responseList, CACHE_DURATION_MINUTES, TimeUnit.MINUTES);
+            if (shouldUseCache) {
+                String cacheKey = buildCacheKey(request);
+                List<TransactionResponse> cachedList = redisService.getList(cacheKey, TransactionResponse.class);
+
+                if (cachedList != null && !cachedList.isEmpty()) {
+                    return BaseGetAllResponse.<TransactionResponse>builder()
+                            .data(paginate(cachedList, skipCount, maxResultCount))
+                            .totalRecords(cachedList.size())
+                            .build();
+                }
+
+                // Cache miss → query và cache
+                String newKeyword = (requestedUserId == null && userIds.isEmpty()) ? keyword : null;
+
+                List<Transaction> transactionList = transactionRepository.findAllWithFilters(
+                        effectiveUserId, code, status, type, sourceAccount, destinationAccount, bankCode, newKeyword
+                );
+
+                List<TransactionResponse> responseList = transactionList.stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList());
+
+                redisService.setList(cacheKey, responseList, CACHE_DURATION_MINUTES, TimeUnit.MINUTES);
+
+                return BaseGetAllResponse.<TransactionResponse>builder()
+                        .data(paginate(responseList, skipCount, maxResultCount))
+                        .totalRecords(responseList.size())
+                        .build();
+            } else {
+                //  Không dùng cache → query trực tiếp
+                String newKeyword = (requestedUserId == null && userIds.isEmpty()) ? keyword : null;
+
+                List<Transaction> transactionList = transactionRepository.findAllWithFilters(
+                        effectiveUserId, code, status, type, sourceAccount, destinationAccount, bankCode, newKeyword
+                );
+
+                List<TransactionResponse> responseList = transactionList.stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList());
+
+                return BaseGetAllResponse.<TransactionResponse>builder()
+                        .data(paginate(responseList, skipCount, maxResultCount))
+                        .totalRecords(responseList.size())
+                        .build();
+            }
+        }
+
+        // ✅ Trường hợp nhiều userIds → dùng cache theo từng userId
+        List<TransactionResponse> allResponses = new ArrayList<>();
+
+        for (UUID uid : userIds) {
+            List<TransactionResponse> responses;
+
+            if (shouldUseCache) {
+                String cacheKey = buildCacheKeyForUser(request, uid);
+                responses = redisService.getList(cacheKey, TransactionResponse.class);
+
+                if (responses == null || responses.isEmpty()) {
+                    List<Transaction> transactions = transactionRepository.findAllWithFilters(
+                            uid, code, status, type, sourceAccount, destinationAccount, bankCode, null
+                    );
+                    responses = transactions.stream()
+                            .map(this::mapToResponse)
+                            .collect(Collectors.toList());
+                    redisService.setList(cacheKey, responses, CACHE_DURATION_MINUTES, TimeUnit.MINUTES);
+                }
+            } else {
+                List<Transaction> transactions = transactionRepository.findAllWithFilters(
+                        uid, code, status, type, sourceAccount, destinationAccount, bankCode, keyword
+                );
+                responses = transactions.stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList());
+            }
+
+            allResponses.addAll(responses);
         }
 
         return BaseGetAllResponse.<TransactionResponse>builder()
-                .data(paginate(responseList, skipCount, maxResultCount))
-                .totalRecords(responseList.size())
+                .data(paginate(allResponses, skipCount, maxResultCount))
+                .totalRecords(allResponses.size())
                 .build();
     }
 
@@ -237,6 +303,23 @@ public class TransactionService {
         }
     }
 
+    private String buildCacheKeyForUser(TransactionGetAllRequest request, UUID userId) {
+        Map<String, Object> filteredParams = new LinkedHashMap<>();
+
+        if (request.getCode() != null) filteredParams.put("code", request.getCode());
+        if (request.getStatus() != null) filteredParams.put("status", request.getStatus());
+        if (request.getType() != null) filteredParams.put("type", request.getType());
+        if (request.getSourceAccount() != null) filteredParams.put("sourceAccount", request.getSourceAccount());
+        if (request.getDestinationAccount() != null) filteredParams.put("destinationAccount", request.getDestinationAccount());
+        if (request.getBankCode() != null) filteredParams.put("bankCode", request.getBankCode());
+        if (request.getKeyword() != null) filteredParams.put("keyword", request.getKeyword());
+        if (request.getSkipCount() != null) filteredParams.put("skipCount", request.getSkipCount());
+        if (request.getMaxResultCount() != null) filteredParams.put("maxResultCount", request.getMaxResultCount());
+
+        String hash = md5Stable(filteredParams.toString());
+        return "transaction:user:" + userId + ":filters:" + hash;
+    }
+
     private static String md5Stable(Object object) {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -255,7 +338,8 @@ public class TransactionService {
         redisService.removeKeysByPrefix("transaction:status:" + transaction.getStatus() + ":filters:");
         redisService.removeKeysByPrefix("transaction:type:" + transaction.getType() + ":filters:");
 
-    // Cuối cùng, xóa cache không định danh
+
+        // Cuối cùng, xóa cache không định danh
         redisService.removeKeysByPrefix("transaction:filters:");
     }
 
@@ -269,22 +353,32 @@ public class TransactionService {
         return String.format("%08d", new Random().nextInt(100_000_000));
     }
 
-    private void resolveUserIdFromUserFields(TransactionGetAllRequest request) {
-        if (request.getUserId() == null && (
+    private boolean shouldSearchByUserFields(TransactionGetAllRequest request) {
+        return request.getUserId() == null && (
                 request.getUserCode() != null ||
                         request.getPhoneNumber() != null ||
                         request.getUserName() != null ||
-                        request.getCmnd() != null)) {
-
+                        request.getCmnd() != null ||
+                        request.getUserFullName() != null ||
+                        request.getKeyword() != null
+        );
+    }
+    private List<UUID> resolveUserIdsFromUserFields(TransactionGetAllRequest request) {
+        if (shouldSearchByUserFields(request)) {
             List<UserResponse> users = userClient.getAllUsers(
-                    0, 1000, null, RoleEnum.USER,
-                    request.getUserName(), null,
+                    0, 1000, request.getKeyword(), RoleEnum.USER,
+                    request.getUserName(), request.getUserFullName(),
                     request.getPhoneNumber(), request.getCmnd(), request.getUserCode()
             ).getResult().getData();
-            if (users.size() == 1) {
-                request.setUserId(users.getFirst().getId());
-            }
+
+            System.out.println("users: " + users);
+
+            return users.stream()
+                    .map(UserResponse::getId)
+                    .collect(Collectors.toList());
         }
+
+        return Collections.emptyList();
     }
 
     private TransactionResponse mapToResponse(Transaction tx) {
