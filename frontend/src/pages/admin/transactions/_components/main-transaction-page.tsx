@@ -292,6 +292,12 @@ const TransactionMainPage = ({ status }: MainTransactionPageProps) => {
                 colSpan: 6,
             },
             {
+                name: 'userFullName',
+                label: 'Tên người dùng',
+                type: 'text',
+                colSpan: 6,
+            },
+            {
                 name: 'phoneNumber',
                 label: 'Số điện thoại',
                 type: 'text',
